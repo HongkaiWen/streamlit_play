@@ -1,32 +1,18 @@
 import streamlit as st
 import pandas as pd
-import io
 
-# 输入文件上传组件
-st.title("数据处理工具")
-uploaded_files = st.file_uploader("选择输入文件", type=["csv", "xlsx"], accept_multiple_files=True)
+# 标题与文本
+st.title("销售数据分析仪表盘")
+st.write("数据来源：2023年季度报告")
 
-if uploaded_files:
-    # 处理文件（示例：合并 CSV）
-    dfs = []
-    for file in uploaded_files:
-        if file.type == "text/csv":
-            df = pd.read_csv(file)
-        elif file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            df = pd.read_excel(file)
-        dfs.append(df)
-    result = pd.concat(dfs)
+# 文件上传
+uploaded_file = st.file_uploader("上传销售数据", type="csv")
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
 
-    # 生成输出文件（示例：导出为 CSV）
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        result.to_excel(writer, index=False)
-    output.seek(0)
+    # 交互式组件
+    selected_product = st.selectbox("选择产品", df["产品"].unique())
 
-    # 下载按钮
-    st.download_button(
-        label="下载结果文件",
-        data=output,
-        file_name="result.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    # 数据可视化
+    filtered_df = df[df["产品"] == selected_product]
+    st.bar_chart(filtered_df, x="月份", y="销售额")
