@@ -95,31 +95,27 @@ if uploaded_file is not None:
         "亿": 100000000
     }[selected_unit]
 
-    # 绘制线状图展示指标走势并在每个点位显示数值
-    fig_line = go.Figure(data=[go.Scatter(
-        x=df[selected_dimension],
-        y=df[selected_metric] / unit_multiplier,
-        mode='lines+markers+text',
-        name=selected_metric,
-        text=[locale.format_string('%d', val / unit_multiplier, grouping=True) for val in df[selected_metric]],
-        textposition='top center',
-        textfont=dict(
-            size=12,
-            color='black'
-        )
+    aggregated_df = df.groupby(selected_dimension)[selected_metric].sum().reset_index()
+
+    # 绘制柱状图展示指标走势并在柱子上显示数值
+    fig_bar = go.Figure(data=[go.Bar(
+        x=aggregated_df[selected_dimension],
+        y=aggregated_df[selected_metric] / unit_multiplier,
+        text=[locale.format_string('%d', val / unit_multiplier, grouping=True) for val in aggregated_df[selected_metric]],
+        textposition='auto',
+        marker_color='skyblue'
     )])
 
-    fig_line.update_layout(
+    fig_bar.update_layout(
         title=f'{selected_metric} 按 {selected_dimension} 的走势（单位：{selected_unit}）',
         xaxis_title=selected_dimension,
         yaxis_title=f'{selected_metric}（单位：{selected_unit}）',
-        showlegend=True,
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         font=dict(color='#666')
     )
 
-    st.plotly_chart(fig_line, use_container_width=True)
+    st.plotly_chart(fig_bar, use_container_width=True)
 
     # 选择分析维度值范围
     dimension_values = df[selected_dimension].unique().tolist()
