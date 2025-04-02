@@ -5,15 +5,6 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 import access_log
 
-st.set_page_config(
-    page_title="魔法工具箱",
-    page_icon="⚙",
-)
-
-st.write("# 欢迎来到魔法工具箱 ⚙️")
-
-st.sidebar.success("请选择一个功能使用")
-
 # 提取环境变量
 env_enable_access_log = os.environ.get('ENABLE_ACCESS_LOG')
 
@@ -33,5 +24,16 @@ if env_enable_access_log == 'Y':
     scheduler.start()
 
     print('finished init...')
+
+st.set_page_config(
+    page_title="魔法工具箱",
+    page_icon="⚙",
+)
+
+st.write("# 欢迎来到魔法工具箱 ⚙️")
+
+st.sidebar.success("请选择一个功能使用")
+
+
 
 # https://docs.streamlit.io/get-started/tutorials/create-a-multipage-app#convert-an-existing-app-into-a-multipage-app
