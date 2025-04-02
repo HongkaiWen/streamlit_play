@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 from datetime import datetime
 from io import BytesIO
+
+from access_log import log_access
 
 # 设置页面标题和布局
 st.set_page_config(page_title="BOM 比对页面", layout="wide")
@@ -59,6 +60,7 @@ if st.session_state.original_bom is not None and st.session_state.new_bom is not
 
     # 开始比对按钮
     if st.button("开始比对"):
+        log_access("bom_compare")
         if not material_code_column or not position_number_column:
             st.error("物料编码列和位置号列必须选择，才能进行对比。")
         else:

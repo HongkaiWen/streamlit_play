@@ -4,6 +4,8 @@ import numpy as np
 from datetime import datetime
 from io import BytesIO
 
+from access_log import log_access
+
 # Set page title and layout
 st.set_page_config(page_title="BOM Comparison Page", layout="wide")
 st.title("BOM Comparison Page")
@@ -68,6 +70,7 @@ if st.session_state.original_bom is not None and st.session_state.new_bom is not
 
     # Start comparison button
     if st.button("Start Comparison"):
+        log_access("bom_compare_en")
         if not material_code_column or not position_number_column:
             st.error("Material code column and position number column must be selected for comparison.")
         else:

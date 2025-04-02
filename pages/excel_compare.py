@@ -6,6 +6,8 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 import io
 import re
 
+from access_log import log_access
+
 
 def remove_html_tags(text):
     """去除 HTML 标签的函数"""
@@ -96,6 +98,7 @@ def check_primary_key_uniqueness(df, primary_keys):
 
 
 def excel_compare():
+    log_access("excel_compare")
     st.title("Excel 文件对比工具")
 
     # 使用侧边栏进行文件上传和参数选择
