@@ -1,7 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 定义 HTML 代码实现条形码扫描、拍照和 GPS 定位
 html_code = """
 <!DOCTYPE html>
 <html>
@@ -27,16 +26,24 @@ html_code = """
         const locationResult = document.getElementById('locationResult');
 
         // 条形码扫描
-        barcodeButton.addEventListener('click', () => {
-            const codeReader = new ZXing.BrowserQRCodeReader();
-            codeReader.decodeOnceFromVideoDevice(undefined, null)
-              .then((result) => {
+        barcodeButton.addEventListener('click', async () => {
+            try {
+                const codeReader = new ZXing.BrowserQRCodeReader();
+                const videoInputDevices = await codeReader.getVideoInputDevices();
+                if (videoInputDevices.length === 0) {
+                    console.error('未找到可用的摄像头设备');
+                    return;
+                }
+                const firstDeviceId = videoInputDevices[0].deviceId;
+                codeReader.decodeOnceFromVideoDevice(firstDeviceId, 'video').then((result) => {
                     barcodeResult.value = result.text;
                     parent.postMessage({type: 'barcode_scan_result', data: result.text}, '*');
-                })
-              .catch((err) => {
-                    console.error(err);
+                }).catch((err) => {
+                    console.error('条形码扫描出错:', err);
                 });
+            } catch (error) {
+                console.error('获取摄像头设备时出错:', error);
+            }
         });
 
         // 拍照
@@ -61,13 +68,14 @@ html_code = """
                     locationResult.value = `${latitude}, ${longitude}`;
                     parent.postMessage({type: 'gps_location', data: `${latitude}, ${longitude}`}, '*');
                 }, (error) => {
-                    console.error(error);
+                    console.error('获取 GPS 定位时出错:', error);
                 });
             } else {
                 console.error('浏览器不支持地理定位');
             }
         });
     </script>
+    <video id="video" style="display:none;"></video>
 </body>
 </html>
 """
