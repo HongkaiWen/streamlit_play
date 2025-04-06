@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import locale
 
-from access_log import log_access
 
 # 设置本地化信息，用于添加千分位逗号
 locale.setlocale(locale.LC_ALL, '')
@@ -65,7 +64,6 @@ st.write("这个页面旨在帮助你对 Excel 数据进行深入的洞察分析
 uploaded_file = st.file_uploader("上传 Excel 文件", type=['xlsx', 'xls'])
 
 if uploaded_file is not None:
-    log_access("data_insight_analysis")
     # 读取 Excel 文件
     df = pd.read_excel(uploaded_file)
 
