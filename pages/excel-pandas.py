@@ -127,10 +127,12 @@ def main():
                     result = local_vars.get('result')
 
                     if result is not None:
-                        st.write("处理结果：")
-                        st.dataframe(result)
+                        # 只显示前 10 行进行预览
+                        preview_result = result.head(10)
+                        st.write("处理结果（前 10 行预览）：")
+                        st.dataframe(preview_result)
 
-                        # 提供下载链接
+                        # 提供下载链接，下载完整数据
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                             result.to_excel(writer, index=False)
