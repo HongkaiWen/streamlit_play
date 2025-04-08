@@ -4,6 +4,7 @@ import io
 from openai import OpenAI
 import re
 
+
 # 调用 Kimi 大模型生成代码
 def call_kimi(table_structures, user_prompt, app_key):
     client = OpenAI(
@@ -31,6 +32,7 @@ def call_kimi(table_structures, user_prompt, app_key):
         st.error(f"调用 Kimi 模型时出错：{e}")
         return None
 
+
 # 预处理代码，提取有效 Python 代码
 def preprocess_code(code):
     # 去除可能的代码块标记（如 ```python 和 ```）
@@ -39,6 +41,7 @@ def preprocess_code(code):
     # 去除多余的空行和前后空格
     code_lines = [line.strip() for line in code.splitlines() if line.strip()]
     return '\n'.join(code_lines)
+
 
 # 将数据类型转换为通俗易懂的描述
 def convert_dtype(dtype):
@@ -55,9 +58,15 @@ def convert_dtype(dtype):
     else:
         return str(dtype)
 
+
 # 主程序
 def main():
     st.title("Excel 数据处理应用")
+
+    # 提示 Kimi AppKey 获取方式
+    st.markdown(
+        "<p style='text-align: center; color: #666;'>**Kimi AppKey 获取方式**：访问 <a href='https://platform.moonshot.cn/console/' target='_blank'>Moonshot AI 官方网站</a> 注册开发者账户，在账户中生成 API 密钥作为 AppKey。</p>",
+        unsafe_allow_html=True)
 
     # 输入 Kimi AppKey
     app_key = st.text_input("输入 Kimi AppKey")
@@ -138,6 +147,7 @@ def main():
 
                 except Exception as e:
                     st.error(f"执行代码时出错：{e}")
+
 
 if __name__ == "__main__":
     main()
