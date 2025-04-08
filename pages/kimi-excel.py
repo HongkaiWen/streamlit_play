@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 from openai import OpenAI
 import json
+import queue
+import threading
+from time import time
 
 # 设置页面布局
 st.set_page_config(layout="wide")
@@ -12,6 +15,9 @@ st.markdown("<p style='text-align: center; color: #666;'>本应用可基于 Exce
 
 # 提示 Kimi AppKey 获取方式
 st.markdown("<p style='text-align: center; color: #666;'>**Kimi AppKey 获取方式**：访问 <a href='https://platform.moonshot.cn/console/' target='_blank'>Moonshot AI 官方网站</a> 注册开发者账户，在账户中生成 API 密钥作为 AppKey。</p>", unsafe_allow_html=True)
+
+# 选择免费版或收费版
+version = st.selectbox("选择版本", ["免费版", "收费版"], index=0)
 
 # 添加一些分隔线和空格，增强视觉效果
 st.markdown("<hr>", unsafe_allow_html=True)
@@ -26,7 +32,7 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
 
         # 预览前 10 行数据
-        st.subheader("文件数据预览（前 10 行）")
+        st.subheader("文件数据预览")
         st.dataframe(df.head(10), use_container_width=True)
 
         # 添加一些分隔线和空格，增强视觉效果
@@ -37,7 +43,7 @@ if uploaded_file:
         app_key = st.text_input("Kimi AppKey", key="app_key_input", help="请输入有效的 Kimi AppKey")
 
         # 动态添加提示词和新列名称
-        num_prompts = st.number_input("请输入提示词的数量", min_value=1, value=1, step=1, key="num_prompts_input")
+        num_prompts = st.number_input("请输入需要生成的新列的数量", min_value=1, value=1, step=1, key="num_prompts_input")
         prompts = []
         new_column_names = []
         for i in range(num_prompts):
@@ -90,32 +96,83 @@ if uploaded_file:
                             st.error(f"调用 Kimi 模型时出错: {e}")
                             return None
 
-                    # 为每个提示词生成新列
-                    for prompt, new_column_name in zip(prompts, new_column_names):
-                        df[new_column_name] = df.apply(lambda row: generate_new_column(row, prompt), axis=1)
+                    # 免费版限制队列
+                    def process_requests(request_queue, df, prompts, new_column_names):
+                        request_times = []
+                        max_requests_per_minute = 3
+                        while True:
+                            item = request_queue.get()
+                            if item is None:
+                                break
+                            row, prompt, new_column_name = item
+                            now = time()
+                            # 移除一分钟前的请求记录
+                            request_times[:] = [t for t in request_times if now - t < 60]
+                            if len(request_times) >= max_requests_per_minute:
+                                # 等待直到可以发送新请求
+                                while len(request_times) >= max_requests_per_minute:
+                                    now = time()
+                                    request_times[:] = [t for t in request_times if now - t < 60]
+                            result = generate_new_column(row, prompt)
+                            df.at[row.name, new_column_name] = result
+                            request_times.append(now)
+                            request_queue.task_done()
 
-                    # 显示生成后的 DataFrame
-                    st.subheader("生成后的文件数据")
-                    st.dataframe(df, use_container_width=True)
+                    # 预览部分（前 2 行）
+                    preview_df = df.head(2).copy()
+                    if version == "免费版":
+                        request_queue = queue.Queue()
+                        processing_thread = threading.Thread(target=process_requests, args=(request_queue, preview_df, prompts, new_column_names))
+                        processing_thread.start()
+                        for prompt, new_column_name in zip(prompts, new_column_names):
+                            for _, row in preview_df.iterrows():
+                                request_queue.put((row, prompt, new_column_name))
+                        request_queue.join()
+                        request_queue.put(None)
+                        processing_thread.join()
+                    else:
+                        for prompt, new_column_name in zip(prompts, new_column_names):
+                            preview_df[new_column_name] = preview_df.apply(lambda row: generate_new_column(row, prompt), axis=1)
+
+                    # 显示生成后的预览 DataFrame
+                    st.subheader("生成后的文件数据预览")
+                    st.dataframe(preview_df, use_container_width=True)
 
                     # 添加一些分隔线和空格，增强视觉效果
                     st.markdown("<hr>", unsafe_allow_html=True)
                     st.write("")
 
-                    # 将 DataFrame 保存为 Excel 文件并提供下载链接
-                    from io import BytesIO
-                    output = BytesIO()
-                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        df.to_excel(writer, index=False)
-                    output.seek(0)
+                    # 下载按钮
+                    if st.button("下载生成后的文件", key="download_button"):
+                        full_df = df.copy()
+                        if version == "免费版":
+                            request_queue = queue.Queue()
+                            processing_thread = threading.Thread(target=process_requests, args=(request_queue, full_df, prompts, new_column_names))
+                            processing_thread.start()
+                            for prompt, new_column_name in zip(prompts, new_column_names):
+                                for _, row in full_df.iterrows():
+                                    request_queue.put((row, prompt, new_column_name))
+                            request_queue.join()
+                            request_queue.put(None)
+                            processing_thread.join()
+                        else:
+                            for prompt, new_column_name in zip(prompts, new_column_names):
+                                full_df[new_column_name] = full_df.apply(lambda row: generate_new_column(row, prompt), axis=1)
 
-                    st.download_button(
-                        label="下载生成后的文件",
-                        data=output,
-                        file_name="generated_file.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key="download_button"
-                    )
+                        # 将完整 DataFrame 保存为 Excel 文件并提供下载链接
+                        from io import BytesIO
+                        output = BytesIO()
+                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                            full_df.to_excel(writer, index=False)
+                        output.seek(0)
+
+                        st.download_button(
+                            label="点击下载",
+                            data=output,
+                            file_name="generated_file.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key="actual_download_button"
+                        )
                 except Exception as e:
                     st.error(f"处理文件时出错: {e}")
             else:
